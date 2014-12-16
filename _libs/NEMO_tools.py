@@ -18,7 +18,7 @@ def reporj_NEMOgrid(raw_x, raw_y, raw_data, nav_lon, nav_lat, method='nearest'):
     '''
     =======================================================================
     Reproject irregular data to a xy grid, works for various cases
-    (See Nancy's notebook in SalishSea/analysis )
+    (See Nancy's IPy notebook in SalishSea/analysis )
                             ----- created on 2014/12/14, Yingkai (Kyle) Sha    
     -----------------------------------------------------------------------
     data_interp = reporj_xygrid(...)
@@ -93,7 +93,7 @@ def reporj_xygrid(raw_x, raw_y, raw_data, xlim, ylim, res):
             else:
                 d_array[i, j]=np.nan
                 x_array[i, j]=np.nan
-                y_array[i,j]=np.nan
+                y_array[i, j]=np.nan
                 
     return d_array, x_array, y_array, bin_count
 
