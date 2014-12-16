@@ -254,7 +254,8 @@ def plot_Arctic_LandCover(lon, lat, lat0, var, clev, CMap, var_name='variable'):
                        "Laptev Sea",         \
                        "Norwegian Sea",      \
                        "Ob Internal Basins", \
-                       "South Greenland"],   \
+                       "South Greenland Sea",\
+                       "Greenland Sea"],     \
                        bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=1)
     #CBar=proj.colorbar(CS, location='right', size='5%', pad='10%')
     #CBar.set_label(var_name, fontsize=14, fontweight='bold')

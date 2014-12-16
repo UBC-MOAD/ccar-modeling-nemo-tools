@@ -1,3 +1,9 @@
+'''
+============================================
+h5dump
+--------------------------------------------
+copied from Phil Austin's ATSC-301 classcode
+'''
 #!/usr/bin/env python
 from __future__ import print_function
 import h5py
