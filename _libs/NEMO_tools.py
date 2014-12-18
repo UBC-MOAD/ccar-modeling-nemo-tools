@@ -8,6 +8,7 @@ A collection of useful functions for NEMO
 2014/12/11 File created
 2014/12/12 Add "plot_Arctic_LandCover"
 2014/12/14 Add "reporj_xygrid", "reporj_NEMOgrid"
+2014/12/18 Add "pcolor_Arctic"
 '''
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,6 +33,9 @@ def reporj_NEMOgrid(raw_x, raw_y, raw_data, nav_lon, nav_lat, method='nearest'):
             methods: interpolation methods ('nearest', 'linear',  'cubic')
     Output:
             data_interp: interpolated data
+    Note:
+            Omini-functioning, works for both regular and irregular grid
+            but a bit slow.
     =======================================================================
     '''
     from scipy.interpolate import griddata
@@ -134,7 +138,7 @@ def plot_NEMO_grid(lon, lat, color='k', linewidth=0.5, relax=1, location='north'
         proj=Basemap(projection='npstere', resolution='l', boundinglat=0, lon_0=90, round=True, ax=ax)
         # coastline, maskland
         proj.drawcoastlines(linewidth=1.5, linestyle='-', color='k', zorder=3)
-        proj.drawlsmask(land_color=[0.5, 0.5, 0.5], ocean_color='None', lsmask=None, zorder=2)
+        #proj.drawlsmask(land_color=[0.5, 0.5, 0.5], ocean_color='None', lsmask=None, zorder=2)
         # lon, lat -----> x, y coordinates in basemap
         x, y=proj(lon[::relax, ::relax], lat[::relax, ::relax])
         # plot
@@ -155,13 +159,13 @@ def plot_NEMO_grid(lon, lat, color='k', linewidth=0.5, relax=1, location='north'
         proj.plot(x[:, :], y[:, :], color=color, linewidth=linewidth)
     return fig, axes
 
-def plot_NEMO_Arctic(lon, lat, lat0, var, clev, CMap, var_name='variable'):
+def contourf_Arctic(lon, lat, lat0, var, clev, CMap, var_name='variable'):
     '''
     =======================================================================
         PLot data (contours) on Arctic, works for various cases
                             ----- created on 2014/12/11, Yingkai (Kyle) Sha
     -----------------------------------------------------------------------
-        fig, ax, proj = plot_NEMO_Arctic(...)
+        fig, ax, proj = contourf_Arctic(...)
     -----------------------------------------------------------------------
         Input:
                 lon, lat: longitude and latitude records, usually nav_lon, nav_lat
@@ -181,17 +185,58 @@ def plot_NEMO_Arctic(lon, lat, lat0, var, clev, CMap, var_name='variable'):
     parallels=np.arange(-90, 90, 15)
     meridians=np.arange(0, 360, 60)
     proj.drawparallels(parallels, labels=[1, 1, 1, 1],\
-                      fontsize=10, latmax=90)
+                      fontsize=10, latmax=90, linewidth=0)
     proj.drawmeridians(meridians, labels=[1, 1, 1, 1],\
-                      fontsize=10, latmax=90)
+                      fontsize=10, latmax=90, linewidth=0)
     # coastline, maskland
     proj.drawcoastlines(linewidth=1.5, linestyle='-', color='k', zorder=3)
-    proj.drawlsmask(land_color=[0.5, 0.5, 0.5], ocean_color='None', lsmask=None, zorder=2)
+    #proj.drawlsmask(land_color=[0.5, 0.5, 0.5], ocean_color='None', lsmask=None, zorder=2)
     # lon, lat -----> x, y coordinates in basemap
     x, y=proj(lon, lat)
     # plot
     CS=proj.contourf(x, y, var, clev, cmap=CMap, extend='both')
     proj.contour(x, y, var, clev, colors='k', linewidths=2.0)
+    CBar=proj.colorbar(CS, location='right', size='5%', pad='10%')
+    CBar.set_label(var_name, fontsize=14, fontweight='bold')
+    CBar.ax.tick_params(axis='y', length=0)
+    return fig, ax, proj
+    
+def pcolor_Arctic(lon, lat, lat0, var, var_lim, CMap, var_name='variable'):
+    '''
+    =======================================================================
+        PLot data (contours) on Arctic, works for various cases
+                            ----- created on 2014/12/18, Yingkai (Kyle) Sha
+    -----------------------------------------------------------------------
+        fig, ax, proj = pcolor_Arctic(...)
+    -----------------------------------------------------------------------
+        Input:
+                lon, lat: longitude and latitude records, usually nav_lon, nav_lat
+                lat0    : bounding latitude for Arctic
+                var     : variable
+                var_lim : [vmin, vmax]
+                var_name: name and unit show on the colorbar
+                CMap    : colormap <----- (e.g. plt.cm.jet)
+        Output:
+                fig, ax, proj: figure, axis, basemap object
+    =======================================================================    
+    '''
+    fig=plt.figure(figsize=(14, 14))
+    proj=Basemap(projection='npstere', resolution='l', boundinglat=lat0, lon_0=90, round=True)
+    ax=plt.gca()
+    # parallels & meridians
+    parallels=np.arange(-90, 90, 15)
+    meridians=np.arange(0, 360, 60)
+    proj.drawparallels(parallels, labels=[1, 1, 1, 1],\
+                      fontsize=10, latmax=90, linewidth=0)
+    proj.drawmeridians(meridians, labels=[1, 1, 1, 1],\
+                      fontsize=10, latmax=90, linewidth=0)
+    # coastline, maskland
+    proj.drawcoastlines(linewidth=1.5, linestyle='-', color='k', zorder=3)
+    #proj.drawlsmask(land_color=[0.5, 0.5, 0.5], ocean_color='None', lsmask=None, zorder=2)
+    # lon, lat -----> x, y coordinates in basemap
+    x, y=proj(lon, lat)
+    # plot
+    CS=proj.pcolor(x, y, var, vmin=var_lim[0], vmax=var_lim[1], cmap=CMap)
     CBar=proj.colorbar(CS, location='right', size='5%', pad='10%')
     CBar.set_label(var_name, fontsize=14, fontweight='bold')
     CBar.ax.tick_params(axis='y', length=0)
