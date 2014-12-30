@@ -11,10 +11,11 @@ A collection of useful functions for NEMO
 2014/12/14 Add "reporj_xygrid", "reporj_NEMOgrid"
 2014/12/18 Add "pcolor_Arctic", "delete_edge"
 2014/12/22 Add "map_Arctic", rewrite all plotting functions
+2014/12/30 Add "land_mask"
 '''
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import cm
+#from mpl_toolkits.basemap import cm
 from mpl_toolkits.basemap import Basemap
 
 def delete_edge(data, order=[1, 1, 1, 1]):
@@ -134,6 +135,36 @@ def reporj_xygrid(raw_x, raw_y, raw_data, xlim, ylim, res):
                 y_array[i, j]=np.nan
                 
     return d_array, x_array, y_array, bin_count
+    
+    
+def mask_land(lon, lat, data, hit='ORCA2_Arctic'):
+    '''
+    =======================================================================
+    Mask land area based on NEMO's landmask file.
+                            ----- created on 2014/12/29, Yingkai (Kyle) Sha    
+    -----------------------------------------------------------------------
+    data = mask_land(...)
+    -----------------------------------------------------------------------
+    Input:
+            lon, lat: longitude/latitude records for original data
+            data: data to be masked
+            hit: different kind of mask
+    Output:
+            data: masked array
+    =======================================================================
+    '''
+    from scipy.io import loadmat
+    if hit == 'ORCA2_Arctic':
+        mask_obj=loadmat('ORCA2_Landmask_Arctic.mat')
+        mask_data=mask_obj['ORCA2_Landmask_Arctic']
+        ref_lat=mask_obj['nav_lat']
+        ref_lon=mask_obj['nav_lon']
+        
+    mask_interp=reporj_NEMOgrid(ref_lon, ref_lat, mask_data, lon, lat, method='Nearest')
+    data=np.ma.masked_where(mask_interp==1, data)
+
+    return data
+    
 
 def plot_NEMO_grid(lon, lat, bound_lat=0, color='k', linewidth=0.5, relax=1, location='north'):
     '''
