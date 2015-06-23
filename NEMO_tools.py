@@ -12,11 +12,140 @@ A collection of useful functions for NEMO
 2014/12/18 Add "pcolor_Arctic", "delete_edge"
 2014/12/22 Add "map_Arctic", rewrite all plotting functions
 2014/12/30 Add "land_mask"
+2015/06/22 Several new functions added 
 '''
 import numpy as np
 import matplotlib.pyplot as plt
 #from mpl_toolkits.basemap import cm
 from mpl_toolkits.basemap import Basemap
+
+## =============== Timeseries analysis =============== ##
+
+def bin_monmean(dt, data):
+    '''
+    =======================================================================
+    Convert data in days to monthly mean series
+                            ----- created on 2014/12/25, Yingkai (Kyle) Sha
+    -----------------------------------------------------------------------
+        data_dt, series, bin_count = bin_monmean(...)
+    -----------------------------------------------------------------------
+    Input:
+            dt: A list of original data's datetime.datetime objects
+            data: original data
+    Output:
+            data_dt: A list of monmean datetime.datetime objects
+            data: monmean data
+            bin_count: how many points fall into each months, 
+                        data[i]=np.nan when bin_count[i]=0.
+    ======================================================================= 
+    '''
+    import datetime
+    import numpy as np
+    from dateutil.relativedelta import relativedelta
+    
+    dt=sorted(dt) # increase order
+    # Calculate the length of series
+    L=(dt[-1].year-dt[0].year+1)*12
+    series=np.zeros(L)
+    bin_count=np.zeros(L)
+    # Bin data points
+    for i in range(len(dt)):
+        hit=(dt[i].year-dt[0].year)*12+dt[i].month
+        series[hit-1] += data[i] # "-1" because it is Python
+        bin_count[hit-1] += 1 # count    
+    for i in range(L):
+        if bin_count[i] > 0:
+            series[i]=series[i]/bin_count[i]
+        if bin_count[i] == 0:
+            series[i]=np.nan            
+    # generate a corresponding datetime series
+    data_dt=[datetime.datetime(dt[0].year, 01, 01)]
+    step=relativedelta(months=1)    
+    for i in range(L-1): # don't know why but it needs L-1, or the size will missmatch
+        temp=data_dt[i]
+        temp += step
+        data_dt.append(temp)
+    
+    return data_dt, series, bin_count
+    
+def bin_season_cycle(dt, data):
+    '''
+    =======================================================================
+    bin daily data into 12 months
+                            ----- created on 2014/12/25, Yingkai (Kyle) Sha
+    -----------------------------------------------------------------------
+        series, bin_count = bin_season_cycle(...)
+    -----------------------------------------------------------------------
+    Input:
+            dt: A list of original data's datetime.datetime objects
+            data: original data
+    Output:
+            data: data in 12 months
+            bin_count: how many points fall into each months, 
+                        data[i]=np.nan when bin_count[i]=0.
+    ======================================================================= 
+    '''
+    #import datetime
+    import numpy as np
+    #from dateutil.relativedelta import relativedelta
+    
+    dt=sorted(dt) # increase order
+    series=np.zeros(12)
+    bin_count=np.zeros(12)
+    # Bin data points
+    for i in range(len(dt)):
+        hit=dt[i].month
+        series[hit-1] += data[i] # "-1" because it is Python
+        bin_count[hit-1] += 1 # count    
+    for i in range(12):
+        if bin_count[i] > 0:
+            series[i]=series[i]/bin_count[i]
+        if bin_count[i] == 0:
+            series[i]=np.nan        
+    return series, bin_count
+    
+def int_between(begin, end, num_between):
+    '''
+    =======================================================================
+    Use linear interpolation get values (equally distributed) between knowns
+                            ----- created on 2015/05/08, Yingkai (Kyle) Sha
+    -----------------------------------------------------------------------
+        out = int_between(...)
+    -----------------------------------------------------------------------
+    Input:
+            begin: x0
+            end: x1
+            num_between: how many points you want
+    ======================================================================= 
+    '''
+    from scipy.interpolate import interp1d
+    f = interp1d([0, 1], [begin, end])
+    return f(np.linspace(0, 1, num_between+2))[1:-1]    
+    
+## =============== Grid analysis =============== ##
+
+def nearest_search(nav_lon, nav_lat, lons, lats):
+    '''
+    =======================================================================
+    Get the nearest grid point of your lons, lats
+                            ----- created by Yingkai (Kyle) Sha
+    -----------------------------------------------------------------------
+        ind_x, ind_y = nearest_search(...)
+    -----------------------------------------------------------------------
+    Input:
+            begin: x0
+            end: x1
+            num_between: how many points you want
+    ======================================================================= 
+    '''
+    from scipy.spatial import cKDTree
+    combined_x_y_arrays = np.dstack([nav_lon.ravel(), nav_lat.ravel()])[0]
+    points_list = list(np.array([lons.T, lats.T]).T)
+    #
+    mytree = cKDTree(combined_x_y_arrays)
+    dist, index_flat = mytree.query(points_list)
+    x, y = np.unravel_index(index_flat, nav_lon.shape)
+    return x, y
 
 def delete_edge(data, order=[1, 1, 1, 1]):
     
@@ -135,8 +264,7 @@ def reporj_xygrid(raw_x, raw_y, raw_data, xlim, ylim, res):
                 y_array[i, j]=np.nan
                 
     return d_array, x_array, y_array, bin_count
-    
-    
+       
 def mask_land(lon, lat, data, hit='ORCA2_Arctic'):
     '''
     =======================================================================
@@ -352,7 +480,7 @@ def plot_Arctic_LandCover(lon, lat, lat0, var, clev, regions, CMap, var_name='va
     CS=proj.contourf(x, y, var, clev, cmap=CMap)
     proj.pcolor(x, y, var, vmin=clev[0], vmax=clev[-1], cmap=CMap)
     proxy = [plt.Rectangle((0, 0), 1, 1, fc = pc.get_facecolor()[0]) for pc in CS.collections]
-    plt.legend(proxy, regions, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=1)
+    LG=plt.legend(proxy, regions, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=1); LG.draw_frame(False)  
     return fig, ax, proj
 
 
