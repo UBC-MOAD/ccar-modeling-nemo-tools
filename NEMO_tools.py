@@ -12,7 +12,8 @@ A collection of useful functions for NEMO
 2014/12/18 Add "pcolor_Arctic", "delete_edge"
 2014/12/22 Add "map_Arctic", rewrite all plotting functions
 2014/12/30 Add "land_mask"
-2015/06/22 Several new functions added 
+2015/06/22 functions for timeseries analysis added 
+2015/07/02 functions for CTD profiles  
 '''
 import numpy as np
 import matplotlib.pyplot as plt
@@ -120,9 +121,97 @@ def int_between(begin, end, num_between):
     '''
     from scipy.interpolate import interp1d
     f = interp1d([0, 1], [begin, end])
-    return f(np.linspace(0, 1, num_between+2))[1:-1]    
+    return f(np.linspace(0, 1, num_between+2))[1:-1]
+
+## =============== CTD analysis ================ ##
+def int_profile(x, y, dep, val, dep_int, thres=1000):
+    '''
+    ====================================================================================
+    Interpolating CTD profiles
+                                                     ----- created by Yingkai (Kyle) Sha
+    ------------------------------------------------------------------------------------
+        locx, locy, out = int_profile(...)
+    ------------------------------------------------------------------------------------
+    Input:
+            x, y: lons/lats or any variables indicates the location of CTD profiles
+            dep: CTD depth
+            val: values
+            dep_int: depth you want to interpolate
+            thres: If the diff of CTD depth > thres, the points between will be masked
+    ====================================================================================
+    '''
+    from scipy.interpolate import InterpolatedUnivariateSpline
+    _, idx = np.unique(x, return_index=True) # <---- np.unique do not perserve order
+    locx = x[np.sort(idx)]
+    locy = y[np.sort(idx)]
+    out = np.zeros([len(locx), len(dep_int)])
+    out[out==0] = np.nan
+    for i in range(len(locx)):
+        val_temp = val[x==locx[i]]
+        dep_temp = dep[x==locx[i]]
+        index = np.argsort(dep_temp)
+        if len(index)>1:
+            int_fun = InterpolatedUnivariateSpline(dep_temp[index], val_temp[index], k=1, ext=0)
+            bin_index = np.searchsorted(dep_int, dep_temp[index], 'right')
+            lower = bin_index[0]-1
+            upper = bin_index[-1]
+            out[i, lower:upper] = int_fun(dep_int[lower:upper])
+            for j in range(len(bin_index)):
+                if dep_int[bin_index[j]]-dep_int[bin_index[j-1]] > thres:
+                    out[i, (bin_index[j-1]-1):(bin_index[j]-1)] = np.nan
+    return locx, locy, out
+
+def bin_profile(dep, val, dep_bin):
+    '''
+    ==============================================
+    Bin CTD profiles
+               ----- created by Yingkai (Kyle) Sha
+    ----------------------------------------------
+        out, bin_count = bin_profile(...)
+    ----------------------------------------------
+    Input:
+            dep: CTD depth
+            val: values (without nan)
+            dep_int: depth you want to interpolate
+    ==============================================
+    '''
+    out = np.zeros(dep_bin.shape)
+    bin_count = np.zeros(dep_bin.shape)
+    bin_index = np.searchsorted(dep_bin, dep, 'right')
+    for i in range(len(bin_index)):
+        bin_row=bin_index[i]-1
+        out[bin_row] += val[i]
+        bin_count[bin_row] += 1
+    for i in range(len(dep_bin)):
+        if bin_count[i] > 0:
+            out[i] = out[i]/bin_count[i]
+        else:
+            out[i] = np.nan
+    return out, bin_count    
     
 ## =============== Grid analysis =============== ##
+
+def find_inland(lon, lat):
+    '''
+    Identify if data points are located in land
+    Based on Basemap's GSHHS dataset
+    -------------------------------------------
+            ----- 2015/06/29 Yingkai (Kyle) Sha
+    '''
+    from mpl_toolkits.basemap import Basemap
+    from matplotlib.path import Path
+    result = np.empty(lon.shape)
+    proj = Basemap(projection='cyl', resolution='l')
+    for i in range(np.size(lon, 0)):
+        x, y = proj(lon[i, :], lat[i, :])
+        locations = np.c_[x, y]
+        polygons = [Path(p.boundary) for p in proj.landpolygons]
+        row_result = np.zeros(len(locations), dtype=bool) 
+        for polygon in polygons:
+            row_result += np.array(polygon.contains_points(locations))
+        result[i, :] = row_result
+    return result
+
 
 def nearest_search(nav_lon, nav_lat, lons, lats):
     '''
